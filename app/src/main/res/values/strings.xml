@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Unsplash Photos</string>
+    <string name="buttonDetails">Button</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_delete">Delete</string>
+</resources>
