@@ -42,7 +42,7 @@ public class DBMapper {
             int thumbColIndex = c.getColumnIndex("thumbUrl");
             do {
                 ImageItem imageItem = new ImageItem(c.getString(idColIndex),c.getString(descriptionColIndex),
-                        c.getString(regularColIndex),c.getString(thumbColIndex));
+                        new ImageItem.Urls(null, null,c.getString(regularColIndex),null,c.getString(thumbColIndex)));
                 result.add(imageItem);
             } while (c.moveToNext());
         } else

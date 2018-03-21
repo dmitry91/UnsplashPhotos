@@ -14,11 +14,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dmitry.unsplashphotos.DetailsActivity;
 import com.dmitry.unsplashphotos.IO.ImageIOMapper;
 import com.dmitry.unsplashphotos.R;
 import com.dmitry.unsplashphotos.db.DBMapper;
 import com.dmitry.unsplashphotos.entities.ImageItem;
-import com.dmitry.unsplashphotos.sevices.JsonImageParser;
+import com.dmitry.unsplashphotos.sevices.UnsplashApi;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
@@ -46,7 +47,7 @@ public class ViewPagerAdapter extends PagerAdapter {
 
     @Override
     public boolean isViewFromObject(View view, Object object) {
-        return view ==  object;
+        return view == object;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class ViewPagerAdapter extends PagerAdapter {
                 false);
 
         descriptionView = (TextView) itemView.findViewById(R.id.title_details);
-        if (!imageItems.get(position).getDescription().equals("null") && descriptionView != null) {
+        if (imageItems.get(position).getDescription() != null && !imageItems.get(position).getDescription().equals("null")) {
             descriptionView.setText(imageItems.get(position).getDescription());
         }
 
@@ -89,18 +90,14 @@ public class ViewPagerAdapter extends PagerAdapter {
             mButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Toast.makeText(imageView.getContext(), "save", Toast.LENGTH_LONG).show();
-                    new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... params) {
-                            //save to database
-                            dBMapper.insertToSavedTable(imageItems.get(position));
-                            //save image to local storage
-                            mImageIOMapper.saveToInternalStorage(imageItems.get(position).getThumbPhotoUrl(),imageItems.get(position).getThumbPhotoName());
-                            mImageIOMapper.saveToInternalStorage(imageItems.get(position).getRegularPhotoUrl(),imageItems.get(position).getRegularPhotoName());
-                            return null;
+                SaveImage saveImage = new SaveImage();
+                    try {
+                        if(saveImage.execute(position).get()){
+                            Toast.makeText(imageView.getContext(), "save", Toast.LENGTH_LONG).show();
                         }
-                    }.execute();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
         } else {
@@ -108,16 +105,10 @@ public class ViewPagerAdapter extends PagerAdapter {
             mButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    dBMapper.deleteRowFromSaved(imageItems.get(position).getId());
+                    mImageIOMapper.delete(imageItems.get(position).getThumbPhotoName());
+                    mImageIOMapper.delete(imageItems.get(position).getRegularPhotoName());
                     Toast.makeText(imageView.getContext(), "delete", Toast.LENGTH_LONG).show();
-                    new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... params) {
-                            dBMapper.deleteRowFromSaved(imageItems.get(position).getId());
-                            mImageIOMapper.delete(imageItems.get(position).getThumbPhotoName());
-                            mImageIOMapper.delete(imageItems.get(position).getRegularPhotoName());
-                            return null;
-                        }
-                    }.execute();
                 }
             });
         }
@@ -132,9 +123,10 @@ public class ViewPagerAdapter extends PagerAdapter {
     }
 
     private class DownloadImageBitmap extends AsyncTask<String, Object, Bitmap> {
-        JsonImageParser jsonImageParser;
+        UnsplashApi mUnsplashApi;
+
         DownloadImageBitmap() {
-            jsonImageParser  = new JsonImageParser();
+            mUnsplashApi = new UnsplashApi();
         }
 
         private ProgressDialog dialog = new ProgressDialog(context);
@@ -147,10 +139,9 @@ public class ViewPagerAdapter extends PagerAdapter {
         }
 
         protected Bitmap doInBackground(String... urls) {
-            if(tabPos.equals("tab1")) {
-                return jsonImageParser.getImageReduce(urls[0]);
-            }
-            else {
+            if (tabPos.equals("tab1")) {
+                return mUnsplashApi.getImageReduce(urls[0]);
+            } else {
                 return null;
             }
         }
@@ -163,4 +154,23 @@ public class ViewPagerAdapter extends PagerAdapter {
             }
         }
     }
+
+    private class SaveImage extends AsyncTask<Integer, Object, Boolean> {
+        @Override
+        protected Boolean doInBackground(Integer... params) {
+            if(((DetailsActivity)context).hasPermissions()) {
+                //save to database
+                dBMapper.insertToSavedTable(imageItems.get(params[0]));
+                //save image to local storage
+                mImageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getThumbPhotoUrl(), imageItems.get(params[0]).getThumbPhotoName());
+                mImageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getRegularPhotoUrl(), imageItems.get(params[0]).getRegularPhotoName());
+                return true;
+            }
+            else {
+                ((DetailsActivity)context).requestPermissionWithRationale();
+                return false;
+            }
+        }
+    }
+
 }

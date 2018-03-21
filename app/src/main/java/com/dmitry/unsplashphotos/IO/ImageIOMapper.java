@@ -4,7 +4,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Environment;
 
-import com.dmitry.unsplashphotos.sevices.JsonImageParser;
+import com.dmitry.unsplashphotos.sevices.UnsplashApi;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,31 +12,33 @@ import java.io.FileOutputStream;
 
 public class ImageIOMapper {
 
-    private JsonImageParser jsonImageParser;
+    private UnsplashApi mUnsplashApi;
     private String rootPath;
 
     public ImageIOMapper() {
-        jsonImageParser = new JsonImageParser();
+        mUnsplashApi = new UnsplashApi();
         rootPath = Environment.getExternalStorageDirectory().toString();
     }
 
     public void saveToInternalStorage(String url, String name){
-        Bitmap bitmap = jsonImageParser.getImage(url);
+        Bitmap bitmap = mUnsplashApi.getImage(url);
 
         File myDir = new File(rootPath +"/UnsplashPhotos/saved");
+        boolean createDir = true;
         if (!myDir.exists()){
-            myDir.mkdirs();
+            createDir = myDir.mkdirs();
         }
-        File file = new File(myDir,  name +".jpg");
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
-            out.flush();
-            out.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        if(createDir) {
+            File file = new File(myDir, name + ".jpg");
+            try {
+                FileOutputStream out = new FileOutputStream(file);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+                out.flush();
+                out.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
-
     }
 
     public Bitmap loadImageFromStorage(String name)
@@ -61,5 +63,11 @@ public class ImageIOMapper {
         if (fdelete.exists()) {
             fdelete.delete();
         }
+    }
+
+    public static boolean createDIr(String path){
+        File myDir = new File(path);
+        System.out.println(myDir.mkdirs()+" rootPath +\"/UnsplashPhotos/saved\"");
+            return myDir.mkdirs();
     }
 }

@@ -6,14 +6,12 @@ public class ImageItem implements Serializable {
 
     private String id;
     private String description;
-    private String regularPhotoUrl;
-    private String thumbPhotoUrl;
+    private Urls urls;
 
-    public ImageItem(String id, String description, String regularPhotoUrl, String thumbPhotoUrl) {
+    public ImageItem(String id, String description, Urls urls) {
         this.id = id;
         this.description = description;
-        this.regularPhotoUrl = regularPhotoUrl;
-        this.thumbPhotoUrl = thumbPhotoUrl;
+        this.urls = urls;
     }
 
     public String getId() {
@@ -29,21 +27,23 @@ public class ImageItem implements Serializable {
     }
 
     public String getRegularPhotoUrl() {
-        return regularPhotoUrl;
+        return urls.getRegular();
     }
 
     public String getRegularPhotoName() {
-        String[] arr = regularPhotoUrl.split("/");
-        return arr[arr.length-1];
+        String[] arr = urls.getRegular().split("/");
+        arr = arr[arr.length-1].split("\\?");
+        return arr[0]+"-Regular";
     }
 
     public String getThumbPhotoUrl() {
-        return thumbPhotoUrl;
+        return urls.getThumb();
     }
 
     public String getThumbPhotoName() {
-        String[] arr =thumbPhotoUrl.split("/");
-        return arr[arr.length-1];
+        String[] arr = urls.getThumb().split("/");
+        arr = arr[arr.length-1].split("\\?");
+        return arr[0]+"-Thumb";
     }
 
     @Override
@@ -51,8 +51,44 @@ public class ImageItem implements Serializable {
         return "ImageItem{" +
                 "id='" + id + '\'' +
                 ", description='" + description + '\'' +
-                ", regularPhotoUrl='" + regularPhotoUrl + '\'' +
-                ", thumbPhotoUrl='" + thumbPhotoUrl + '\'' +
+                ", regularPhotoUrl='" + urls.getRegular() + '\'' +
+                ", thumbPhotoUrl='" + urls.getThumb() + '\'' +
                 '}';
+    }
+
+    public static class Urls implements Serializable {
+
+        private String raw;
+        private String full;
+        private String regular;
+        private String small;
+        private String thumb;
+
+        public Urls(String raw, String full, String regular, String small, String thumb) {
+            this.raw = raw;
+            this.full = full;
+            this.regular = regular;
+            this.small = small;
+            this.thumb = thumb;
+        }
+
+        String getThumb() {
+            return thumb;
+        }
+
+        String getRegular() {
+            return regular;
+        }
+
+        @Override
+        public String toString() {
+            return "Urls{" +
+                    "raw='" + raw + '\'' +
+                    ", full='" + full + '\'' +
+                    ", regular='" + regular + '\'' +
+                    ", small='" + small + '\'' +
+                    ", thumb='" + thumb + '\'' +
+                    '}';
+        }
     }
 }
