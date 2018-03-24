@@ -2,13 +2,13 @@ package com.dmitry.unsplashphotos.adapter;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 
+import com.dmitry.unsplashphotos.IO.ImageIOMapper;
 import com.dmitry.unsplashphotos.R;
 
 import java.util.ArrayList;
@@ -17,29 +17,28 @@ public class GridViewAdapter extends BaseAdapter {
 
     private Context context;
     private int layoutResourceId;
-    private ArrayList data = new ArrayList();
+    private ArrayList path = new ArrayList();
 
-    public GridViewAdapter(Context context, int layoutResourceId, ArrayList data) {
+    public GridViewAdapter(Context context, int layoutResourceId, ArrayList path) {
         this.layoutResourceId = layoutResourceId;
         this.context = context;
-        this.data = data;
+        this.path = path;
     }
 
     @Override
     public int getCount() {
-        return data.size();
+        return path.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return data.get(position);
+        return path.get(position);
     }
 
     @Override
     public long getItemId(int position) {
         return position;
     }
-
     //use element
     public View getView(int position, View convertView, ViewGroup parent) {
         View row = convertView;
@@ -55,7 +54,9 @@ public class GridViewAdapter extends BaseAdapter {
         } else {
             holder = (ViewHolder) row.getTag();
         }
-        holder.image.setImageBitmap((Bitmap) data.get(position));
+        //load image by path, and insert after load
+        ImageIOMapper imageIOMapper = new ImageIOMapper();
+        imageIOMapper.loadImageWithGlide(context, path.get(position).toString(), holder.image);
         return row;
     }
 

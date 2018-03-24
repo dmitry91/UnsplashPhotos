@@ -1,8 +1,6 @@
 package com.dmitry.unsplashphotos.adapter;
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
@@ -19,7 +17,6 @@ import com.dmitry.unsplashphotos.IO.ImageIOMapper;
 import com.dmitry.unsplashphotos.R;
 import com.dmitry.unsplashphotos.db.DBMapper;
 import com.dmitry.unsplashphotos.entities.ImageItem;
-import com.dmitry.unsplashphotos.sevices.UnsplashApi;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
@@ -30,14 +27,14 @@ public class ViewPagerAdapter extends PagerAdapter {
     private String tabPos;
     private ArrayList<ImageItem> imageItems;
     private DBMapper dBMapper;
-    private ImageIOMapper mImageIOMapper;
+    private ImageIOMapper imageIOMapper;
 
     public ViewPagerAdapter(Context context, ArrayList<ImageItem> imageItems, String tabPos) {
         this.imageItems = imageItems;
         this.context = context;
         this.tabPos = tabPos;
-        dBMapper = new DBMapper((Activity) context);
-        mImageIOMapper = new ImageIOMapper();
+        dBMapper = new DBMapper();
+        imageIOMapper = new ImageIOMapper();
     }
 
     @Override
@@ -67,22 +64,13 @@ public class ViewPagerAdapter extends PagerAdapter {
         }
 
         imageView = (ImageView) itemView.findViewById(R.id.image_details);
-
-        DownloadImageBitmap downloadImageBitmap = new DownloadImageBitmap();
-        Bitmap imageBtm = null;
+        //load image for details view
         if (tabPos.equals("tab1")) {
-            try {
-                imageBtm = downloadImageBitmap.execute(imageItems.get(position).getRegularPhotoUrl()).get();
-
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
+            imageIOMapper.loadImageWithGlide(context,imageItems.get(position).getRegularPhotoUrl(),imageView);
         }
         if (tabPos.equals("tab2")) {
-            imageBtm = mImageIOMapper.loadImageFromStorage(imageItems.get(position).getRegularPhotoName());
+            imageIOMapper.loadImageWithGlide(context,ImageIOMapper.rootPathStorage + "/" + imageItems.get(position).getRegularPhotoName() + ".jpg",imageView);
         }
-
-        imageView.setImageBitmap(imageBtm);
 
         Button mButton = (Button) itemView.findViewById(R.id.btn_details);
         if (tabPos.equals("tab1")) {
@@ -105,10 +93,15 @@ public class ViewPagerAdapter extends PagerAdapter {
             mButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    dBMapper.deleteRowFromSaved(imageItems.get(position).getId());
-                    mImageIOMapper.delete(imageItems.get(position).getThumbPhotoName());
-                    mImageIOMapper.delete(imageItems.get(position).getRegularPhotoName());
-                    Toast.makeText(imageView.getContext(), "delete", Toast.LENGTH_LONG).show();
+                    DeleteImage deleteImage = new DeleteImage();
+                    try {
+                        if(deleteImage.execute(position).get()) {
+                            Toast.makeText(imageView.getContext(), "delete", Toast.LENGTH_LONG).show();
+                        }
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    ((Activity)context).finish(); //close details activity after delete action
                 }
             });
         }
@@ -122,48 +115,15 @@ public class ViewPagerAdapter extends PagerAdapter {
         ((ViewPager) container).removeView((View) object);
     }
 
-    private class DownloadImageBitmap extends AsyncTask<String, Object, Bitmap> {
-        UnsplashApi mUnsplashApi;
-
-        DownloadImageBitmap() {
-            mUnsplashApi = new UnsplashApi();
-        }
-
-        private ProgressDialog dialog = new ProgressDialog(context);
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            this.dialog.setMessage("Please wait");
-            this.dialog.show();
-        }
-
-        protected Bitmap doInBackground(String... urls) {
-            if (tabPos.equals("tab1")) {
-                return mUnsplashApi.getImageReduce(urls[0]);
-            } else {
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            super.onPostExecute(bitmap);
-            if (dialog.isShowing()) {
-                dialog.dismiss();
-            }
-        }
-    }
-
     private class SaveImage extends AsyncTask<Integer, Object, Boolean> {
         @Override
         protected Boolean doInBackground(Integer... params) {
             if(((DetailsActivity)context).hasPermissions()) {
                 //save to database
-                dBMapper.insertToSavedTable(imageItems.get(params[0]));
+                dBMapper.insertToImageItemTable(imageItems.get(params[0]));
                 //save image to local storage
-                mImageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getThumbPhotoUrl(), imageItems.get(params[0]).getThumbPhotoName());
-                mImageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getRegularPhotoUrl(), imageItems.get(params[0]).getRegularPhotoName());
+                imageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getThumbPhotoUrl(), imageItems.get(params[0]).getThumbPhotoName());
+                imageIOMapper.saveToInternalStorage(imageItems.get(params[0]).getRegularPhotoUrl(), imageItems.get(params[0]).getRegularPhotoName());
                 return true;
             }
             else {
@@ -173,4 +133,19 @@ public class ViewPagerAdapter extends PagerAdapter {
         }
     }
 
+    private class DeleteImage extends AsyncTask<Integer, Object, Boolean> {
+        @Override
+        protected Boolean doInBackground(Integer... params) {
+            if(((DetailsActivity)context).hasPermissions()) {
+                dBMapper.deleteRowFromImageTable(imageItems.get(params[0]).getId());
+                imageIOMapper.delete(imageItems.get(params[0]).getThumbPhotoName());
+                imageIOMapper.delete(imageItems.get(params[0]).getRegularPhotoName());
+                return true;
+            }
+            else {
+                ((DetailsActivity)context).requestPermissionWithRationale();
+                return false;
+            }
+        }
+    }
 }

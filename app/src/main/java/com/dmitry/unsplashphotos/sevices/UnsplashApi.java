@@ -33,11 +33,12 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class UnsplashApi {
-    //return list ImageItem from url json response
+    //return list ImageItem from url
     public ArrayList<ImageItem> getArrayImageItem(String url) {
         final SSLSocketFactory[] tLSSocketFactory = {null};
 
         try {
+            //it is necessary to include protocols on android 4.0-4.4
             SSLContext context = SSLContext.getInstance("TLSv1.2");
             context.init(null, null, null);
             tLSSocketFactory[0] = new TLSSocketFactory(context.getSocketFactory());
@@ -51,11 +52,13 @@ public class UnsplashApi {
                     .connectTimeout(60, TimeUnit.SECONDS)
                     .readTimeout(60,TimeUnit.SECONDS)
                     .sslSocketFactory(tLSSocketFactory[0], getTrustManager())
-                    .addInterceptor(new HeaderInterceptor(MainActivity.UNSPLASH_USER_ID)).build();
+                    .addInterceptor(new HeaderInterceptor(MainActivity.UNSPLASH_USER_ID))//id for authorization
+                    .build();
         } catch (NoSuchAlgorithmException | KeyStoreException e) {
             e.printStackTrace();
         }
 
+        assert client != null;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(url)
                 .client(client)
@@ -64,6 +67,7 @@ public class UnsplashApi {
 
         IUnsplashApi iUnsplashApi = retrofit.create(IUnsplashApi.class);
         Call<List<ImageItem>> image = iUnsplashApi.getArrayImageItem();
+
         ArrayList<ImageItem> imageItemArray = new ArrayList<>();
         try {
             imageItemArray = (ArrayList<ImageItem>) image.execute().body();
@@ -84,20 +88,7 @@ public class UnsplashApi {
         return (X509TrustManager) trustManagers[0];
     }
 
-    public Bitmap getImageReduce(String urlPath) {
-        Bitmap bmp = null;
-        try {
-            URL url = new URL(urlPath);
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 2;//reduce the original image 2 times, else out of memory error
-            bmp = BitmapFactory.decodeStream((InputStream) url.getContent(), null, options);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return bmp;
-    }
-
-    public Bitmap getImage(String urlPath) {
+    public Bitmap loadImage(String urlPath) {
         Bitmap bmp = null;
         try {
             URL url = new URL(urlPath);

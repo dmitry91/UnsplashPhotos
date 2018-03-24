@@ -1,34 +1,34 @@
 package com.dmitry.unsplashphotos.IO;
 
+import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Environment;
+import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
 import com.dmitry.unsplashphotos.sevices.UnsplashApi;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
 public class ImageIOMapper {
 
     private UnsplashApi mUnsplashApi;
-    private String rootPath;
+    public static String rootPathStorage = Environment.getExternalStorageDirectory() + "/UnsplashPhotos/saved";
 
     public ImageIOMapper() {
         mUnsplashApi = new UnsplashApi();
-        rootPath = Environment.getExternalStorageDirectory().toString();
     }
 
-    public void saveToInternalStorage(String url, String name){
-        Bitmap bitmap = mUnsplashApi.getImage(url);
+    public void saveToInternalStorage(String url, String name) {
+        Bitmap bitmap = mUnsplashApi.loadImage(url);
 
-        File myDir = new File(rootPath +"/UnsplashPhotos/saved");
+        File myDir = new File(rootPathStorage);
         boolean createDir = true;
-        if (!myDir.exists()){
+        if (!myDir.exists()) {
             createDir = myDir.mkdirs();
         }
-        if(createDir) {
+        if (createDir) {
             File file = new File(myDir, name + ".jpg");
             try {
                 FileOutputStream out = new FileOutputStream(file);
@@ -41,33 +41,23 @@ public class ImageIOMapper {
         }
     }
 
-    public Bitmap loadImageFromStorage(String name)
-    {
-        FileInputStream fileInputStream;
-        File myDir = new File(rootPath +"/UnsplashPhotos/saved");
-
-        File file = new File(myDir,  name +".jpg");
-        Bitmap bitmap = null;
-        try{
-            fileInputStream = new FileInputStream(file);
-            bitmap = BitmapFactory.decodeStream(fileInputStream);
-            fileInputStream.close();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-        return bitmap;
+    public void loadImageWithGlide(Context context, String path, ImageView imageView) {
+        Glide.
+                with(context).
+                load(path).
+                asBitmap().
+                into(imageView);
     }
 
-    public void delete(String name){
-        File fdelete = new File(rootPath +"/UnsplashPhotos/saved/" + name +".jpg");
-        if (fdelete.exists()) {
-            fdelete.delete();
+    public void delete(String name) {
+        File fileDelete = new File(rootPathStorage + "/" + name + ".jpg");
+        if (fileDelete.exists()) {
+            fileDelete.delete();
         }
     }
 
-    public static boolean createDIr(String path){
+    public static boolean createDIr(String path) {
         File myDir = new File(path);
-        System.out.println(myDir.mkdirs()+" rootPath +\"/UnsplashPhotos/saved\"");
-            return myDir.mkdirs();
+        return myDir.mkdirs();
     }
 }

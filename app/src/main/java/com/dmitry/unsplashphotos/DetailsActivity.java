@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -31,7 +30,7 @@ public class DetailsActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.pager_details);
 
-        final int position = getIntent().getIntExtra("position",0);
+        final int position = getIntent().getIntExtra("position", 0);
         final ArrayList<ImageItem> imageItems = (ArrayList<ImageItem>) getIntent().getSerializableExtra("array");
 
         ViewPager viewPager = (ViewPager) findViewById(R.id.pager_details);
@@ -41,24 +40,24 @@ public class DetailsActivity extends FragmentActivity {
         viewPager.setCurrentItem(position);
     }
 
-    public boolean hasPermissions(){
+    public boolean hasPermissions() {
         int res = 0;
         //string array of permissions,
         String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
-        for (String perms : permissions){
+        for (String perms : permissions) {
             res = checkCallingOrSelfPermission(perms);
-            if (!(res == PackageManager.PERMISSION_GRANTED)){
+            if (!(res == PackageManager.PERMISSION_GRANTED)) {
                 return false;
             }
         }
         return true;
     }
 
-    private void requestPerms(){
+    //for ask user perm
+    private void requestPerms() {
         String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-            requestPermissions(permissions,PERMISSION_REQUEST_CODE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(permissions, PERMISSION_REQUEST_CODE);
         }
     }
 
@@ -66,14 +65,12 @@ public class DetailsActivity extends FragmentActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         boolean allowed = true;
 
-        switch (requestCode){
+        switch (requestCode) {
             case PERMISSION_REQUEST_CODE:
-
-                for (int res : grantResults){
+                for (int res : grantResults) {
                     // if user granted all permissions.
                     allowed = allowed && (res == PackageManager.PERMISSION_GRANTED);
                 }
-
                 break;
             default:
                 // if user not granted permissions.
@@ -81,14 +78,13 @@ public class DetailsActivity extends FragmentActivity {
                 break;
         }
 
-        if (allowed){
+        if (allowed) {
             //user granted all permissions we can perform our task.
-            ImageIOMapper.createDIr(Environment.getExternalStorageDirectory().toString() +"/UnsplashPhotos/saved");
-        }
-        else {
+            ImageIOMapper.createDIr(ImageIOMapper.rootPathStorage);
+        } else {
             // we will give warning to user that they haven't granted permissions.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+                if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                     Toast.makeText(this, "Storage Permissions denied.", Toast.LENGTH_SHORT).show();
 
                 } else {
@@ -96,11 +92,10 @@ public class DetailsActivity extends FragmentActivity {
                 }
             }
         }
-
     }
 
     public void showNoStoragePermissionSnackbar() {
-        Snackbar.make(DetailsActivity.this.findViewById(R.id.details_activity), "Storage permission isn't granted" , Snackbar.LENGTH_LONG)
+        Snackbar.make(DetailsActivity.this.findViewById(R.id.details_activity), "Storage permission isn't granted", Snackbar.LENGTH_LONG)
                 .setAction("SETTINGS", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -124,15 +119,16 @@ public class DetailsActivity extends FragmentActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            ImageIOMapper.createDIr(Environment.getExternalStorageDirectory().toString() +"/UnsplashPhotos/saved");
+            ImageIOMapper.createDIr(ImageIOMapper.rootPathStorage);
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
+
     public void requestPermissionWithRationale() {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                 Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            final String message = "Storage permission is needed to show files count";
+            final String message = "Storage permission is needed to show files";
             Snackbar.make(DetailsActivity.this.findViewById(R.id.details_activity), message, Snackbar.LENGTH_LONG)
                     .setAction("GRANT", new View.OnClickListener() {
                         @Override

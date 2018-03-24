@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -27,14 +26,17 @@ import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAB_1 = "tag1";
-    public static final String TAB_2 = "tag2";
+    public static final String TAB_1 = "tab1";
+    public static final String TAB_2 = "tab2";
     public static final String URL_UNSPLASH_PHOTOS = "https://api.unsplash.com/";
     public static final String UNSPLASH_USER_ID = "d0ab6ac8477c4b76568e66db73d043e5b441c0a0a64a1eab8e01ca69d26ef0d1";
-    private ArrayList<ImageItem> imageItems;
-    BroadcastReceiver innerReceiver = new BroadcastReceiver(){
-        @Override    public void onReceive(Context context, Intent intent) {
-            if (checkInternet()) {
+    private ArrayList<ImageItem> imageItemsTab1;
+    private ArrayList<ImageItem> imageItemsTab2;
+
+    BroadcastReceiver innerReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (checkInternetConnection()) {
                 createTab1();
                 Toast.makeText(context, "Network Available Do operations", Toast.LENGTH_LONG).show();
             } else {
@@ -55,8 +57,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(
-                ConnectivityManager.CONNECTIVITY_ACTION);
+        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(innerReceiver, intentFilter);
 
         final TabHost tabHost = (TabHost) findViewById(android.R.id.tabhost);
@@ -76,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
 
         tabHost.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
             public void onTabChanged(String tabId) {
-
                 switch (tabId) {
                     case TAB_1:
                         Toast.makeText(MainActivity.this, "Use List photos", Toast.LENGTH_LONG).show();
@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        if (checkInternet()) {
+        if (checkInternetConnection()) {
             createTab1();
         }
     }
@@ -105,23 +105,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void createTab1() {
-        imageItems = null;
-        ArrayList<Bitmap> arrayBitmap = null;
-        DownloadImageTask downloadImageTask = new DownloadImageTask();
+        final ArrayList<String> loadingImageUrls = new ArrayList<>();
+        LoadImageUnsplashTask loadImageUnsplashTask = new LoadImageUnsplashTask();
         try {
-            arrayBitmap = downloadImageTask.execute(URL_UNSPLASH_PHOTOS).get();
+            loadImageUnsplashTask.execute(URL_UNSPLASH_PHOTOS).get();
+            for (int i = 0; i < imageItemsTab1.size(); i++) {
+                loadingImageUrls.add(imageItemsTab1.get(i).getThumbPhotoUrl());
+            }
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
+
         GridView gridView = (GridView) findViewById(R.id.gridViewTab1);
-        GridViewAdapter gridAdapter = new GridViewAdapter(this, R.layout.grid_item_layout, arrayBitmap);
+        GridViewAdapter gridAdapter = new GridViewAdapter(this, R.layout.grid_item_layout, loadingImageUrls);
         gridView.setAdapter(gridAdapter);
-        //Start details activity
+        //Start details activity after click image
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
                 Intent intent = new Intent(MainActivity.this, DetailsActivity.class);
                 intent.putExtra("position", position);
-                intent.putExtra("array", imageItems);
+                intent.putExtra("array", imageItemsTab1);
                 intent.putExtra("tab", "tab1");
                 startActivity(intent);
             }
@@ -129,20 +132,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createTab2() {
-        ArrayList<ImageItem> imageItemsTab2;
-        ArrayList<Bitmap> arrayBitmapTab2 = new ArrayList<>();
-        ImageIOMapper imageIOMapper = new ImageIOMapper();
-        DBMapper dbMapper = new DBMapper(this);
-
-        imageItemsTab2 = dbMapper.readFromSavedTable();
-        for (int i = 0; i < imageItemsTab2.size(); i++) {
-            arrayBitmapTab2.add(imageIOMapper.loadImageFromStorage(imageItemsTab2.get(i).getThumbPhotoName()));
+        ArrayList<String> savedImageUri = new ArrayList<>();
+        LoadImageStorageTask loadImageStorageTask = new LoadImageStorageTask();
+        try {
+            loadImageStorageTask.execute().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
-
+        for (int i = 0; i < imageItemsTab2.size(); i++) {
+            savedImageUri.add(ImageIOMapper.rootPathStorage + "/" + imageItemsTab2.get(i).getThumbPhotoName() + ".jpg");
+        }
         GridView gridViewTab2 = (GridView) findViewById(R.id.gridViewTab2);
-        GridViewAdapter gridAdapterTab2 = new GridViewAdapter(this, R.layout.grid_item_layout, arrayBitmapTab2);
+        GridViewAdapter gridAdapterTab2 = new GridViewAdapter(this, R.layout.grid_item_layout, savedImageUri);
         gridViewTab2.setAdapter(gridAdapterTab2);
-        //Start details activity
+        //Start details activity after click image
         final ArrayList<ImageItem> finalImageItemsTab = imageItemsTab2;
         gridViewTab2.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
@@ -154,25 +157,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    //for download json array from unsplash, and parse json array to ImageItem
-    private class DownloadImageTask extends AsyncTask<String, Object, ArrayList<Bitmap>> {
-        ArrayList<Bitmap> arrayBitmap;
+    //for download ImageItem array from unsplash
+    private class LoadImageUnsplashTask extends AsyncTask<String, Object, Void> {
 
-        DownloadImageTask() {
-            arrayBitmap = new ArrayList<>();
-        }
-
-        protected ArrayList<Bitmap> doInBackground(String... urls) {
+        protected Void doInBackground(String... urls) {
             UnsplashApi unsplashApi = new UnsplashApi();
-            imageItems = unsplashApi.getArrayImageItem(urls[0]);
-            for (int i = 0; i < imageItems.size(); i++) {
-                arrayBitmap.add(unsplashApi.getImage(imageItems.get(i).getThumbPhotoUrl()));
-            }
-            return arrayBitmap;
+            imageItemsTab1 = unsplashApi.getArrayImageItem(urls[0]);
+            return null;
+        }
+    }
+    //load image array from DB
+    private class LoadImageStorageTask extends AsyncTask<Void, Void, Void> {
+
+        protected Void doInBackground(Void... urls) {
+            DBMapper dbMapper = new DBMapper();
+            imageItemsTab2 = dbMapper.readFromImageItemTable();
+            return null;
         }
     }
 
-    public boolean checkInternet() {
+    public boolean checkInternetConnection() {
         ConnectivityManager cm =
                 (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();

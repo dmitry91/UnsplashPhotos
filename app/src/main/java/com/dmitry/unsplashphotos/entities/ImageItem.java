@@ -1,11 +1,20 @@
 package com.dmitry.unsplashphotos.entities;
 
+import android.arch.persistence.room.Embedded;
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.PrimaryKey;
+import android.support.annotation.NonNull;
+
 import java.io.Serializable;
 
+@Entity
 public class ImageItem implements Serializable {
 
+    @PrimaryKey
+    @NonNull
     private String id;
     private String description;
+    @Embedded
     private Urls urls;
 
     public ImageItem(String id, String description, Urls urls) {
@@ -46,6 +55,11 @@ public class ImageItem implements Serializable {
         return arr[0]+"-Thumb";
     }
 
+
+    public Urls getUrls() {
+        return urls;
+    }
+
     @Override
     public String toString() {
         return "ImageItem{" +
@@ -56,8 +70,8 @@ public class ImageItem implements Serializable {
                 '}';
     }
 
+    @Entity
     public static class Urls implements Serializable {
-
         private String raw;
         private String full;
         private String regular;
@@ -72,11 +86,23 @@ public class ImageItem implements Serializable {
             this.thumb = thumb;
         }
 
-        String getThumb() {
+        public String getRaw() {
+            return raw;
+        }
+
+        public String getFull() {
+            return full;
+        }
+
+        public String getSmall() {
+            return small;
+        }
+
+        public String getThumb() {
             return thumb;
         }
 
-        String getRegular() {
+        public String getRegular() {
             return regular;
         }
 
